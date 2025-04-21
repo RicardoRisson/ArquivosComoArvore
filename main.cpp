@@ -20,19 +20,40 @@ public:
     long tamanho;       // em bytes (0 para pastas)
     vector<FileNode> filhos;
 
+    // Construtor: Inicializa um nó da árvore com nome, tipo ("arquivo" ou "pasta") e tamanho
+    // @param nome: Nome do arquivo ou pasta
+    // @param tipo: Tipo do nó ("arquivo" ou "pasta")
+    // @param tamanho: Tamanho em bytes (0 por padrão, usado principalmente para arquivos)
     FileNode(const string& nome, const string& tipo, long tamanho = 0)
         : nome(nome), tipo(tipo), tamanho(tamanho) {}
 
+    // Adiciona um nó filho (arquivo ou pasta) ao nó atual
+    // @param filho: Nó a ser adicionado como filho
     void adicionarFilho(const FileNode& filho) {
         filhos.push_back(filho);
     }
 
-    // Retorna o número de filhos diretos (não recursivo)
+    // Retorna o número de filhos diretos (não recursivo) do nó atual
+    // @return O número total de nós filhos imediatos (arquivos e pastas)
+    // @note Este método conta apenas os filhos diretos, não incluindo subpastas
+    //       ou arquivos dentro das subpastas. Para uma contagem completa de
+    //       todos os itens na árvore, seria necessário um método recursivo.
+    // @see calcularTamanhoTotal() para um exemplo de método recursivo
     int contarFilhos() const {
         return filhos.size();
     }
 
-    // Calcula o tamanho total recursivamente
+    // Calcula o tamanho total de um nó e seus descendentes recursivamente
+    // @return O tamanho total em bytes:
+    //         - Para arquivos: retorna o tamanho do próprio arquivo
+    //         - Para pastas: soma o tamanho de todos os arquivos contidos nela e suas subpastas
+    // @note Este método é recursivo e percorre toda a árvore abaixo do nó atual
+    // @example Para uma pasta com estrutura:
+    //          /pasta (0 bytes)
+    //          ├── arquivo1.txt (100 bytes)
+    //          └── subpasta
+    //              └── arquivo2.txt (200 bytes)
+    //          O tamanho total será 300 bytes (100 + 200)
     long calcularTamanhoTotal() const {
         if (tipo == "arquivo") {
             return tamanho;
@@ -45,13 +66,32 @@ public:
         return tamanho_total;
     }
 
-    void mostrar(int nivel = 0) const {
-        string indent(nivel * 2, ' ');
-        cout << indent << "|- " << nome;
+    // Exibe a estrutura de arquivos e diretórios em formato de árvore no console
+    // @param nivel: Nível de profundidade do nó atual na árvore (0 para raiz)
+    // @param ultimo: Indica se é o último item em seu nível (true = ├──, false = └──)
+    // @note Este método usa caracteres especiais para criar a visualização hierárquica:
+    //       │   : Linha vertical para conectar níveis
+    //       ├── : Conexão para itens intermediários
+    //       └── : Conexão para o último item
+    // @example Exemplo de saída:
+    //          pasta (2 filhos, 300 bytes)
+    //          ├── arquivo.txt (100 bytes)
+    //          └── subpasta (1 filho, 200 bytes)
+    //              └── outro.txt (200 bytes)
+    void mostrar(int nivel = 0, bool ultimo = true) const {
+        // Indentação inicial
+        if (nivel > 0) {
+            for (int i = 0; i < nivel - 1; i++) {
+                cout << "|   ";
+            }
+            cout << (ultimo ? "└── " : "├── ");
+        }
+
+        // Nome e informações
+        cout << nome;
         if (tipo == "arquivo") {
             cout << " (" << tamanho << " bytes)";
         } else {
-            // Mostra número de filhos e tamanho total para pastas
             int num_filhos = contarFilhos();
             long tamanho_total = calcularTamanhoTotal();
             cout << " (" << num_filhos << (num_filhos == 1 ? " filho" : " filhos")
@@ -59,40 +99,69 @@ public:
         }
         cout << endl;
 
-        for (const auto& filho : filhos) {
-            filho.mostrar(nivel + 1);
+        // Mostra filhos com a linha vertical
+        if (!filhos.empty()) {
+            for (size_t i = 0; i < filhos.size(); i++) {
+                filhos[i].mostrar(nivel + 1, i == filhos.size() - 1);
+            }
         }
     }
 
-    string gerarHTML(int nivel = 0) const {
-        string indent(nivel * 4, ' ');
-        string html = indent + "<li>\n";
-        html += indent + "    <span class='" + tipo + "'>" + nome;
+    // Gera a representação HTML da árvore de arquivos e diretórios
+    // @param nivel: Nível de profundidade do nó atual na árvore (0 para raiz)
+    // @param ultimo: Indica se é o último item em seu nível (true para último item)
+    // @return Uma string contendo o HTML formatado com indentação e estilos
+    // @note Este método gera uma representação visual da árvore usando caracteres especiais:
+    //       │   : Linha vertical para conectar níveis
+    //       ├── : Conexão para itens intermediários
+    //       └── : Conexão para o último item
+    // @example Exemplo de saída HTML:
+    //          <span class='pasta'>documentos (2 filhos, 300 bytes)</span>
+    //          ├── <span class='arquivo'>relatorio.txt (100 bytes)</span>
+    //          └── <span class='pasta'>imagens (1 filho, 200 bytes)</span>
+    string gerarHTML(int nivel = 0, bool ultimo = true) const {
+
+        string html;
         
+        // Indentação inicial
+        for (int i = 0; i < nivel; i++) {
+            html += (i == nivel - 1 ? (ultimo ? "└── " : "├── ") : "│   ");
+        }
+        
+        // Nome e informações
+        html += "<span class='" + tipo + "'>" + nome;
         if (tipo == "arquivo") {
             html += " (" + to_string(tamanho) + " bytes)";
         } else {
             int num_filhos = contarFilhos();
             long tamanho_total = calcularTamanhoTotal();
-            html += " (" + to_string(num_filhos) + (num_filhos == 1 ? " filho" : " filhos");
-            html += ", " + to_string(tamanho_total) + " bytes)";
+            html += " (" + to_string(num_filhos) + (num_filhos == 1 ? " filho" : " filhos")
+                   + ", " + to_string(tamanho_total) + " bytes)";
         }
-        html += "</span>\n";
+        html += "</span><br>\n";
 
+        // Adiciona filhos
         if (!filhos.empty()) {
-            html += indent + "    <ul>\n";
-            for (const auto& filho : filhos) {
-                html += filho.gerarHTML(nivel + 1);
+            for (size_t i = 0; i < filhos.size(); i++) {
+                html += filhos[i].gerarHTML(nivel + 1, i == filhos.size() - 1);
             }
-            html += indent + "    </ul>\n";
         }
         
-        html += indent + "</li>\n";
         return html;
     }
 };
 
-// Função para exportar a árvore de diretórios para um arquivo HTML
+// Função que exporta a árvore de arquivos para um arquivo HTML
+// @param raiz: Nó raiz da árvore de arquivos a ser exportada
+// @param caminho: Caminho do arquivo HTML de saída
+// @note Esta função cria um documento HTML completo com:
+//       - Codificação UTF-8 para suporte a caracteres especiais
+//       - Estilos CSS para formatação visual (cores e fontes)
+//       - Estrutura hierárquica mantida através de indentação
+// @example O arquivo HTML gerado terá:
+//          - Arquivos em preto
+//          - Diretórios em verde
+//          - Fonte monoespaçada para alinhamento
 void exportarHTML(const FileNode& raiz, const string& caminho) {
     ofstream arquivo(caminho);
     if (!arquivo.is_open()) {
@@ -105,15 +174,16 @@ void exportarHTML(const FileNode& raiz, const string& caminho) {
             << "    <meta charset='UTF-8'>\n"
             << "    <title>Árvore de Arquivos</title>\n"
             << "    <style>\n"
-            << "        .arquivo { color: blue; }\n"
-            << "        .pasta { color: brown; font-weight: bold; }\n"
-            << "        ul { list-style-type: none; }\n"
+            << "        body { \n"
+            << "            font-family: monospace;\n"
+            << "            white-space: pre;\n"
+            << "            margin: 20px;\n"
+            << "        }\n"
+            << "        .arquivo { color: black; }\n"
+            << "        .pasta { color: green; }\n"
             << "    </style>\n"
             << "</head>\n<body>\n"
-            << "    <h1>Estrutura de Arquivos</h1>\n"
-            << "    <ul>\n"
-            << raiz.gerarHTML()
-            << "    </ul>\n"
+            << raiz.gerarHTML(0, true)
             << "</body>\n</html>";
 
     arquivo.close();
