@@ -3,9 +3,11 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <algorithm>
 
 using namespace std;
 namespace fs = filesystem;
+
 
 /*
 ----------Compilação----------
@@ -19,13 +21,14 @@ public:
     string tipo;        // "arquivo" ou "pasta"
     long tamanho;       // em bytes (0 para pastas)
     vector<FileNode> filhos;
+    string caminho_completo;
 
     // Construtor: Inicializa um nó da árvore com nome, tipo ("arquivo" ou "pasta") e tamanho
     // @param nome: Nome do arquivo ou pasta
     // @param tipo: Tipo do nó ("arquivo" ou "pasta")
     // @param tamanho: Tamanho em bytes (0 por padrão, usado principalmente para arquivos)
     FileNode(const string& nome, const string& tipo, long tamanho = 0)
-        : nome(nome), tipo(tipo), tamanho(tamanho) {}
+        : nome(nome), tipo(tipo), tamanho(tamanho), caminho_completo(caminho) {}
 
     // Adiciona um nó filho (arquivo ou pasta) ao nó atual
     // @param filho: Nó a ser adicionado como filho
@@ -149,6 +152,43 @@ public:
         
         return html;
     }
+    void encontraMaiorArquivo(long& max_tam, vector<string>& caminhos) const {
+        if (tipo == "arquivo") {                        // se o nó for arquivo
+            if (tamanho > max_tam) {                    // e se for maior que o tamanho atual máximo
+                max_tam = tamanho;                      // atualiza o maior tamanho
+                caminhos.clear();                       // limpa os caminhos anteriores
+                caminhos.push_back(caminho_completo);   // adiciona o novo maior
+            } else if (tamanho == max_tam) {
+                caminhos.push_back(caminho_completo);   // se for do mesmo tamanho do maior, adiciona também
+            }
+        }
+        for (const auto& filho : filhos) {              // aplica recursivamente para todos os filhos (arquivos e subpastas)
+            filho.encontraMaiorArquivo(max_tam, caminhos);
+        }
+    }
+
+    void buscaPorExtensao(const string& ext, vector<string>& arquivos) const {
+        if (tipo == "arquivo" && nome.size() >= ext.size() && nome.substr(nome.size() - ext.size()) == ext) { // verifica se o nó é um arquivo e se o nome termina com a extensão desejada
+            arquivos.push_back(caminho_completo);                                                             // adiciona à lista de resultados
+        }
+    
+        for (const auto& filho : filhos) {                                                                    // aplica recursivamente a busca para todos os filhos
+            filho.buscaPorExtensao(ext, arquivos);
+        }
+    }
+    
+
+    void encontraPastasVazias(vector<string>& vazias) const {
+        if (tipo == "pasta") {                                      // se for pasta
+            if (filhos.empty()) {
+                vazias.push_back(caminho_completo);                 // se não tiver filhos, é vazia
+            } else {
+                for (const auto& filho : filhos) {                  // senão, verifica recursivamente os filhos
+                    filho.encontraPastasVazias(vazias);
+                }
+            }
+        }
+    }
 };
 
 // Função que exporta a árvore de arquivos para um arquivo HTML
@@ -189,6 +229,7 @@ void exportarHTML(const FileNode& raiz, const string& caminho) {
     arquivo.close();
     cout << "Arquivo HTML gerado com sucesso: " << caminho << endl;
 }
+
 
 // Função que carrega a árvore de diretórios REAL
 FileNode carregarArvore(const fs::path& caminho) {
@@ -247,9 +288,45 @@ int main(int argc, char* argv[]) {
                 break;
             }
                 
-            case 3:
-                cout << "\n(Em breve: pesquisar)\n";
+            case 3: {
+                int sub_opcao;
+                cout << "\nPesquisas:\n";
+                cout << "1. Maior arquivo\n";
+                cout << "2. Arquivos por extensao\n";
+                cout << "3. Pastas vazias\n";
+                cout << "Digite: ";
+                cin >> sub_opcao;
+
+                if (sub_opcao == 1) {
+                    long max_tam = -1;
+                    vector<string> caminhos;
+                    raiz.encontraMaiorArquivo(max_tam, caminhos);
+                    cout << "\nMaior(es) arquivo(s):\n";
+                    for (const auto& c : caminhos) {
+                        cout << c << " (" << max_tam << " bytes)\n";
+                    }
+                } else if (sub_opcao == 2) {
+                    string ext;
+                    cout << "Extensao: ";
+                    cin >> ext;
+                    vector<string> arquivos;
+                    raiz.buscaPorExtensao(ext, arquivos);
+                    cout << "\nArquivos com extensao " << ext << ":\n";
+                    for (const auto& arq : arquivos) {
+                        cout << arq << "\n";
+                    }
+                } else if (sub_opcao == 3) {
+                    vector<string> vazias;
+                    raiz.encontraPastasVazias(vazias);
+                    cout << "\nPastas vazias:\n";
+                    for (const auto& pasta : vazias) {
+                        cout << pasta << "\n";
+                    }
+                } else {
+                    cout << "Opcao invalida.\n";
+                }
                 break;
+            }
                 
             case 4:
                 cout << "\nSaindo...\n";
