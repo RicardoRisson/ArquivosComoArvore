@@ -8,30 +8,59 @@
 using namespace std;
 namespace fs = filesystem;
 
+/*
+----------Compilação----------
+g++ -std=c++17 main.cpp -o main
+./main [diretorio_opcional]
+*/
+
 class FileNode {
 public:
     string nome;
-    string tipo;
-    long tamanho;
+    string tipo;        // "arquivo" ou "pasta"
+    long tamanho;       // em bytes (0 para pastas)
     vector<FileNode> filhos;
     string caminho_completo;
 
-    FileNode(const string& nome, const string& tipo, long tamanho = 0, const string& caminho = "")
+    // Construtor: Inicializa um nó da árvore com nome, tipo ("arquivo" ou "pasta") e tamanho
+    // @param nome: Nome do arquivo ou pasta
+    // @param tipo: Tipo do nó ("arquivo" ou "pasta")
+    // @param tamanho: Tamanho em bytes (0 por padrão, usado principalmente para arquivos)
+    FileNode(const string& nome, const string& tipo, long tamanho = 0)
         : nome(nome), tipo(tipo), tamanho(tamanho), caminho_completo(caminho) {}
 
+    // Adiciona um nó filho (arquivo ou pasta) ao nó atual
+    // @param filho: Nó a ser adicionado como filho
     void adicionarFilho(const FileNode& filho) {
         filhos.push_back(filho);
     }
 
+    // Retorna o número de filhos diretos (não recursivo) do nó atual
+    // @return O número total de nós filhos imediatos (arquivos e pastas)
+    // @note Este método conta apenas os filhos diretos, não incluindo subpastas
+    //       ou arquivos dentro das subpastas. Para uma contagem completa de
+    //       todos os itens na árvore, seria necessário um método recursivo.
+    // @see calcularTamanhoTotal() para um exemplo de método recursivo
     int contarFilhos() const {
         return filhos.size();
     }
 
+    // Calcula o tamanho total de um nó e seus descendentes recursivamente
+    // @return O tamanho total em bytes:
+    //         - Para arquivos: retorna o tamanho do próprio arquivo
+    //         - Para pastas: soma o tamanho de todos os arquivos contidos nela e suas subpastas
+    // @note Este método é recursivo e percorre toda a árvore abaixo do nó atual
+    // @example Para uma pasta com estrutura:
+    //          /pasta (0 bytes)
+    //          ├── arquivo1.txt (100 bytes)
+    //          └── subpasta
+    //              └── arquivo2.txt (200 bytes)
+    //          O tamanho total será 300 bytes (100 + 200)
     long calcularTamanhoTotal() const {
         if (tipo == "arquivo") {
             return tamanho;
         }
-
+        
         long tamanho_total = 0;
         for (const auto& filho : filhos) {
             tamanho_total += filho.calcularTamanhoTotal();
@@ -39,7 +68,20 @@ public:
         return tamanho_total;
     }
 
+    // Exibe a estrutura de arquivos e diretórios em formato de árvore no console
+    // @param nivel: Nível de profundidade do nó atual na árvore (0 para raiz)
+    // @param ultimo: Indica se é o último item em seu nível (true = ├──, false = └──)
+    // @note Este método usa caracteres especiais para criar a visualização hierárquica:
+    //       │   : Linha vertical para conectar níveis
+    //       ├── : Conexão para itens intermediários
+    //       └── : Conexão para o último item
+    // @example Exemplo de saída:
+    //          pasta (2 filhos, 300 bytes)
+    //          ├── arquivo.txt (100 bytes)
+    //          └── subpasta (1 filho, 200 bytes)
+    //              └── outro.txt (200 bytes)
     void mostrar(int nivel = 0, bool ultimo = true) const {
+        // Indentação inicial
         if (nivel > 0) {
             for (int i = 0; i < nivel - 1; i++) {
                 cout << "|   ";
@@ -47,6 +89,7 @@ public:
             cout << (ultimo ? "└── " : "├── ");
         }
 
+        // Nome e informações
         cout << nome;
         if (tipo == "arquivo") {
             cout << " (" << tamanho << " bytes)";
@@ -58,6 +101,7 @@ public:
         }
         cout << endl;
 
+        // Mostra filhos com a linha vertical
         if (!filhos.empty()) {
             for (size_t i = 0; i < filhos.size(); i++) {
                 filhos[i].mostrar(nivel + 1, i == filhos.size() - 1);
@@ -65,13 +109,28 @@ public:
         }
     }
 
+    // Gera a representação HTML da árvore de arquivos e diretórios
+    // @param nivel: Nível de profundidade do nó atual na árvore (0 para raiz)
+    // @param ultimo: Indica se é o último item em seu nível (true para último item)
+    // @return Uma string contendo o HTML formatado com indentação e estilos
+    // @note Este método gera uma representação visual da árvore usando caracteres especiais:
+    //       │   : Linha vertical para conectar níveis
+    //       ├── : Conexão para itens intermediários
+    //       └── : Conexão para o último item
+    // @example Exemplo de saída HTML:
+    //          <span class='pasta'>documentos (2 filhos, 300 bytes)</span>
+    //          ├── <span class='arquivo'>relatorio.txt (100 bytes)</span>
+    //          └── <span class='pasta'>imagens (1 filho, 200 bytes)</span>
     string gerarHTML(int nivel = 0, bool ultimo = true) const {
-        string html;
 
+        string html;
+        
+        // Indentação inicial
         for (int i = 0; i < nivel; i++) {
             html += (i == nivel - 1 ? (ultimo ? "└── " : "├── ") : "│   ");
         }
-
+        
+        // Nome e informações
         html += "<span class='" + tipo + "'>" + nome;
         if (tipo == "arquivo") {
             html += " (" + to_string(tamanho) + " bytes)";
@@ -83,15 +142,15 @@ public:
         }
         html += "</span><br>\n";
 
+        // Adiciona filhos
         if (!filhos.empty()) {
             for (size_t i = 0; i < filhos.size(); i++) {
                 html += filhos[i].gerarHTML(nivel + 1, i == filhos.size() - 1);
             }
         }
-
+        
         return html;
     }
-
     void encontraMaiorArquivo(long& max_tam, vector<string>& caminhos) const {
         if (tipo == "arquivo") {                        // se o nó for arquivo
             if (tamanho > max_tam) {                    // e se for maior que o tamanho atual máximo
@@ -129,9 +188,19 @@ public:
             }
         }
     }
-    
 };
 
+// Função que exporta a árvore de arquivos para um arquivo HTML
+// @param raiz: Nó raiz da árvore de arquivos a ser exportada
+// @param caminho: Caminho do arquivo HTML de saída
+// @note Esta função cria um documento HTML completo com:
+//       - Codificação UTF-8 para suporte a caracteres especiais
+//       - Estilos CSS para formatação visual (cores e fontes)
+//       - Estrutura hierárquica mantida através de indentação
+// @example O arquivo HTML gerado terá:
+//          - Arquivos em preto
+//          - Diretórios em verde
+//          - Fonte monoespaçada para alinhamento
 void exportarHTML(const FileNode& raiz, const string& caminho) {
     ofstream arquivo(caminho);
     if (!arquivo.is_open()) {
@@ -160,20 +229,26 @@ void exportarHTML(const FileNode& raiz, const string& caminho) {
     cout << "Arquivo HTML gerado com sucesso: " << caminho << endl;
 }
 
-FileNode carregarArvore(const fs::path& caminho) {
-    FileNode raiz(caminho.filename().string(), "pasta", 0, caminho.string());
 
+// Função que carrega a árvore de diretórios REAL
+FileNode carregarArvore(const fs::path& caminho) {
+    // Cria o nó raiz (pasta atual)
+    FileNode raiz(caminho.filename().string(), "pasta");
+
+    // Percorre o diretório
     for (const auto& entry : fs::directory_iterator(caminho)) {
+        // Ignora links simbólicos e dispositivos
         if (!entry.is_symlink() && !entry.is_block_file() && !entry.is_character_file()) {
             if (entry.is_directory()) {
+                // Carrega subpastas recursivamente
                 FileNode subpasta = carregarArvore(entry.path());
                 raiz.adicionarFilho(subpasta);
             } else if (entry.is_regular_file()) {
+                // Adiciona arquivo
                 raiz.adicionarFilho(FileNode(
                     entry.path().filename().string(),
                     "arquivo",
-                    entry.file_size(),
-                    entry.path().string()
+                    entry.file_size()
                 ));
             }
         }
@@ -185,8 +260,10 @@ int main(int argc, char* argv[]) {
     fs::path diretorio_base = (argc > 1) ? argv[1] : fs::current_path();
     cout << "Diretorio inicial: " << diretorio_base << "\n\n";
 
+    // Carrega a árvore REAL do sistema de arquivos
     FileNode raiz = carregarArvore(diretorio_base);
 
+    // Menu principal
     int opcao_usuario;
     do {
         cout << "\nOpcoes:\n";
@@ -202,14 +279,14 @@ int main(int argc, char* argv[]) {
                 cout << "\nEstrutura:\n";
                 raiz.mostrar();
                 break;
-
+                
             case 2: {
                 string arquivo_saida = "arvore.html";
                 cout << "\nExportando para HTML...\n";
                 exportarHTML(raiz, arquivo_saida);
                 break;
             }
-
+                
             case 3: {
                 int sub_opcao;
                 cout << "\nPesquisas:\n";
@@ -249,11 +326,11 @@ int main(int argc, char* argv[]) {
                 }
                 break;
             }
-
+                
             case 4:
                 cout << "\nSaindo...\n";
                 break;
-
+                
             default:
                 cout << "\nOpcao invalida!\n";
         }
