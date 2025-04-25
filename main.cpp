@@ -1,9 +1,7 @@
 #include <iostream>
-#include <filesystem>
 #include <string>
 #include <vector>
 #include <fstream>
-#include <algorithm>
 
 using namespace std;
 namespace fs = filesystem;
@@ -301,9 +299,13 @@ int main(int argc, char* argv[]) {
                     long max_tam = -1;
                     vector<string> caminhos;
                     raiz.encontraMaiorArquivo(max_tam, caminhos);
-                    cout << "\nMaior(es) arquivo(s):\n";
-                    for (const auto& c : caminhos) {
-                        cout << c << " (" << max_tam << " bytes)\n";
+                    if (caminhos.empty()) {
+                        cout << "\nSem arquivos para esta seleção\n";
+                    } else {
+                        cout << "\nMaior(es) arquivo(s):\n";
+                        for (const auto& c : caminhos) {
+                            cout << c << " (" << max_tam << " bytes)\n";
+                        }
                     }
                 } else if (sub_opcao == 2) {
                     string ext;
@@ -312,15 +314,24 @@ int main(int argc, char* argv[]) {
                     vector<string> arquivos;
                     raiz.buscaPorExtensao(ext, arquivos);
                     cout << "\nArquivos com extensao " << ext << ":\n";
-                    for (const auto& arq : arquivos) {
-                        cout << arq << "\n";
+                    if (arquivos.empty()) {
+                        cout << "\nSem arquivos para esta seleção\n";
+                    } else {
+                        cout << "\nArquivos com extensao " << ext << ":\n";
+                        for (const auto& arq : arquivos) {
+                            cout << arq << "\n";
+                        }
                     }
                 } else if (sub_opcao == 3) {
                     vector<string> vazias;
                     raiz.encontraPastasVazias(vazias);
-                    cout << "\nPastas vazias:\n";
-                    for (const auto& pasta : vazias) {
-                        cout << pasta << "\n";
+                    if (vazias.empty()) {
+                        cout << "\nSem pastas vazias para esta seleção\n";
+                    } else {
+                        cout << "\nPastas vazias:\n";
+                        for (const auto& pasta : vazias) {
+                            cout << pasta << "\n";
+                        }
                     }
                 } else {
                     cout << "Opcao invalida.\n";
