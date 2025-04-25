@@ -28,7 +28,7 @@ public:
     // @param tipo: Tipo do nó ("arquivo" ou "pasta")
     // @param tamanho: Tamanho em bytes (0 por padrão, usado principalmente para arquivos)
     FileNode(const string& nome, const string& tipo, long tamanho = 0)
-        : nome(nome), tipo(tipo), tamanho(tamanho), caminho_completo(caminho_completo) {}
+        : nome(nome), tipo(tipo), tamanho(tamanho), caminho_completo(nome) {}
 
     // Adiciona um nó filho (arquivo ou pasta) ao nó atual
     // @param filho: Nó a ser adicionado como filho
