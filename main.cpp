@@ -25,8 +25,8 @@ public:
     // @param nome: Nome do arquivo ou pasta
     // @param tipo: Tipo do nó ("arquivo" ou "pasta")
     // @param tamanho: Tamanho em bytes (0 por padrão, usado principalmente para arquivos)
-    FileNode(const string& nome, const string& tipo, long tamanho = 0)
-        : nome(nome), tipo(tipo), tamanho(tamanho), caminho_completo(nome) {}
+    FileNode(const string& nome, const string& tipo, long tamanho = 0, const string& caminho = "")
+        : nome(nome), tipo(tipo), tamanho(tamanho), caminho_completo(caminho) {}
 
     // Adiciona um nó filho (arquivo ou pasta) ao nó atual
     // @param filho: Nó a ser adicionado como filho
@@ -187,6 +187,43 @@ public:
             }
         }
     }
+    // Função recursiva que encontra todos os arquivos cujo tamanho é maior que N bytes.
+    // Os arquivos encontrados são adicionados ao vetor 'arquivos' como pares <caminho, tamanho>.
+    void buscaArquivosMaiores(long n, vector<pair<string, long>>& arquivos) const {
+        // Verifica se o nó é um arquivo e se seu tamanho é maior que n
+        if (tipo == "arquivo" && tamanho > n) {
+            // Se a condição for satisfeita, adiciona o caminho completo e o tamanho ao vetor de resultados.
+            arquivos.push_back({caminho_completo, tamanho});
+        }
+    
+        // Itera por todos os filhos do nó atual (caso seja uma pasta) e aplica a função recursivamente.
+        for (const auto& filho : filhos) {
+            filho.buscaArquivosMaiores(n, arquivos);
+        }
+    }
+    // Função recursiva que encontra a pasta com o maior número de arquivos diretamente dentro dela (não recursivo).
+    void encontraPastaComMaisArquivos(int& max_arquivos, string& caminho_pasta) const {
+        // Verifica se o nó atual é uma pasta.
+        if (tipo == "pasta") {
+            int arquivos_diretos = 0; //Contador para arquivos diretamente nesta pasta.
+            // Itera sobre os filhos imediatos do nó atual.
+            for (const auto& filho : filhos) {
+                // Se o filho for um arquivo, incrementa o contador.
+                if (filho.tipo == "arquivo") {
+                    arquivos_diretos++;
+                }
+            }
+            // Se a quantidade de arquivos diretos nesta pasta for maior do que a máxima encontrada até agora, atualiza os valores de referência.
+            if (arquivos_diretos > max_arquivos) {
+                max_arquivos = arquivos_diretos;
+                caminho_pasta = caminho_completo;
+            }
+            // Chama recursivamente a função para os filhos (subpastas) do nó atual.
+            for (const auto& filho : filhos) {
+                filho.encontraPastaComMaisArquivos(max_arquivos, caminho_pasta);
+            }
+        }
+    }
 };
 
 // Função que exporta a árvore de arquivos para um arquivo HTML
@@ -292,6 +329,8 @@ int main(int argc, char* argv[]) {
                 cout << "1. Maior arquivo\n";
                 cout << "2. Arquivos por extensao\n";
                 cout << "3. Pastas vazias\n";
+                cout << "4. Arquivos maiores que N bytes\n";
+                cout << "5. Pasta com mais arquivos diretos\n";
                 cout << "Digite: ";
                 cin >> sub_opcao;
 
@@ -325,14 +364,30 @@ int main(int argc, char* argv[]) {
                 } else if (sub_opcao == 3) {
                     vector<string> vazias;
                     raiz.encontraPastasVazias(vazias);
-                    if (vazias.empty()) {
-                        cout << "\nSem pastas vazias para esta seleção\n";
-                    } else {
-                        cout << "\nPastas vazias:\n";
-                        for (const auto& pasta : vazias) {
-                            cout << pasta << "\n";
-                        }
+                    cout << "\nPastas vazias:\n";
+                    for (const auto& pasta : vazias) {
+                        cout << pasta << "\n";
+                    } 
+                } else if (sub_opcao == 4) {
+                    long n;
+                    cout << "Digite o valor N (em bytes): ";
+                    cin >> n;
+                    vector<pair<string, long>> arquivos;
+                    raiz.buscaArquivosMaiores(n, arquivos);
+                    cout << "\nArquivos maiores que " << n << " bytes:\n";
+                    for (const auto& [caminho, tam] : arquivos) {
+                        cout << caminho << " (" << tam << " bytes)\n";
                     }
+                } else if (sub_opcao == 5) {
+                    int max_arquivos = -1;
+                    string caminho_pasta;
+                    raiz.encontraPastaComMaisArquivos(max_arquivos, caminho_pasta);
+                    if (max_arquivos >= 0) {
+                        cout << "\nPasta com mais arquivos diretos:\n";
+                        cout << caminho_pasta << " (" << max_arquivos << " arquivo(s))\n";
+                    }else {
+                        cout << "\nNenhuma pasta encontrada.\n";
+                    }    
                 } else {
                     cout << "Opcao invalida.\n";
                 }
@@ -346,7 +401,8 @@ int main(int argc, char* argv[]) {
             default:
                 cout << "\nOpcao invalida!\n";
         }
-    } while (opcao_usuario != 4);
+    } while(opcao_usuario != 4);
 
     return 0;
 }
+
