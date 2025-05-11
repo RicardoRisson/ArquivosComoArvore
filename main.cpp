@@ -3,9 +3,11 @@
 #include <vector>
 #include <fstream>
 #include <filesystem>
+#include <unordered_set>
+#include <utility>
 
 using namespace std;
-namespace fs = std::filesystem;
+namespace fs = filesystem;
 
 /*
 ----------Compilação----------
@@ -191,8 +193,10 @@ public:
         }
     }
 
-    void buscaPorExtensao(const string &ext, vector<string> &arquivos) const
+    void buscaPorExtensao(const string &ext, vector<string> &arquivos, std::unordered_set<string> &visitados) const
     {
+        if (visitados.count(caminho_completo)) return; // Prevenir loops infinitos, ele verifica se o caminho já foi visitado
+        visitados.insert(caminho_completo);
         // if (tipo == "arquivo" && nome.size() >= ext.size() && nome.substr(nome.size() - ext.size()) == ext) { // verifica se o nó é um arquivo e se o nome termina com a extensão desejada PROBLEMA: ->
         // não funciona para arquivos com ponto no nome, pois busca pela extensão literalmente
         if (tipo == "arquivo" && fs::path(nome).extension() == ext)
@@ -202,7 +206,7 @@ public:
 
         for (const auto &filho : filhos)
         { // aplica recursivamente a busca para todos os filhos
-            filho.buscaPorExtensao(ext, arquivos);
+            filho.buscaPorExtensao(ext, arquivos, visitados);
         }
     }
 
@@ -313,44 +317,61 @@ void exportarHTML(const FileNode &raiz, const string &caminho)
 }
 
 // Função que carrega a árvore de diretórios REAL
-FileNode carregarArvore(const fs::path &caminho)
+FileNode carregarArvore(const fs::path &caminho, std::unordered_set<std::string> &visitados)
 {
-    // Cria o nó raiz (pasta atual)
-    FileNode raiz(caminho.filename().string(), "pasta", 0, caminho.string());
+    // Evita visitar o mesmo caminho duas vezes (ex: links simbólicos)
+    std::string caminhoStr = fs::canonical(caminho).string();
+    if (visitados.count(caminhoStr)) return FileNode(caminho.filename().string(), "pasta", 0, caminhoStr);
+    visitados.insert(caminhoStr);
 
-    // Percorre o diretório
-    for (const auto &entry : fs::directory_iterator(caminho))
+    FileNode raiz(caminho.filename().string(), "pasta", 0, caminhoStr);
+
+    try
     {
-        // Ignora links simbólicos e dispositivos
-        if (!entry.is_symlink() && !entry.is_block_file() && !entry.is_character_file())
+        for (const auto &entry : fs::directory_iterator(caminho, fs::directory_options::skip_permission_denied))
         {
-            if (entry.is_directory())
+            try
             {
-                // Carrega subpastas recursivamente
-                FileNode subpasta = carregarArvore(entry.path());
-                raiz.adicionarFilho(subpasta);
+                if (!entry.is_symlink() && !entry.is_block_file() && !entry.is_character_file())
+                {
+                    if (entry.is_directory())
+                    {
+                        FileNode subpasta = carregarArvore(entry.path(), visitados);
+                        raiz.adicionarFilho(subpasta);
+                    }
+                    else if (entry.is_regular_file())
+                    {
+                        raiz.adicionarFilho(FileNode(
+                            entry.path().filename().string(),
+                            "arquivo",
+                            entry.file_size(),
+                            entry.path().string()));
+                    }
+                }
             }
-            else if (entry.is_regular_file())
+            catch (const fs::filesystem_error &e)
             {
-                // Adiciona arquivo
-                raiz.adicionarFilho(FileNode(
-                    entry.path().filename().string(),
-                    "arquivo",
-                    entry.file_size(),
-                    entry.path().string()));
+                std::cerr << "Aviso interno: não foi possível acessar \"" << entry.path()
+                          << "\": " << e.what() << std::endl;
             }
         }
     }
+    catch (const fs::filesystem_error &e)
+    {
+        std::cerr << "Aviso: não foi possível acessar \"" << caminho << "\": " << e.what() << std::endl;
+    }
+
     return raiz;
 }
 
 int main(int argc, char *argv[])
 {
+    std::unordered_set<std::string> visitados;
     fs::path diretorio_base = (argc > 1) ? argv[1] : fs::current_path();
     cout << "Diretorio inicial: " << diretorio_base << "\n\n";
 
     // Carrega a árvore REAL do sistema de arquivos
-    FileNode raiz = carregarArvore(diretorio_base);
+    FileNode raiz = carregarArvore(diretorio_base, visitados);
 
     // Menu principal
     int opcao_usuario;
@@ -411,11 +432,12 @@ int main(int argc, char *argv[])
             }
             else if (sub_opcao == 2)
             {
+                std::unordered_set<std::string> visitados;
                 string ext;
                 cout << "Extensao: ";
                 cin >> ext;
                 vector<string> arquivos;
-                raiz.buscaPorExtensao(ext, arquivos);
+                raiz.buscaPorExtensao(".txt", arquivos, visitados);
                 cout << "\nArquivos com extensao " << ext << ":\n";
                 if (arquivos.empty())
                 {
