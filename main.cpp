@@ -437,8 +437,8 @@ int main(int argc, char *argv[])
                 cout << "Extensao: ";
                 cin >> ext;
                 vector<string> arquivos;
-                raiz.buscaPorExtensao(".txt", arquivos, visitados);
-                cout << "\nArquivos com extensao " << ext << ":\n";
+                raiz.buscaPorExtensao(ext, arquivos, visitados);
+                
                 if (arquivos.empty())
                 {
                     cout << "\nSem arquivos para esta seleção\n";
