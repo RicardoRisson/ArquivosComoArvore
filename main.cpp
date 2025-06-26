@@ -286,9 +286,9 @@ public:
 //          - Arquivos em preto
 //          - Diretórios em verde
 //          - Fonte monoespaçada para alinhamento
-void exportarHTML(const FileNode &raiz, const string &caminho)
+void exportarHTML(const FileNode &raiz, const string &arquivo_saida)
 {
-    ofstream arquivo(caminho);
+    ofstream arquivo(arquivo_saida);
     if (!arquivo.is_open())
     {
         cout << "Erro ao criar arquivo HTML!" << endl;
@@ -313,7 +313,7 @@ void exportarHTML(const FileNode &raiz, const string &caminho)
             << "</body>\n</html>";
 
     arquivo.close();
-    cout << "Arquivo HTML gerado com sucesso: " << caminho << endl;
+    cout << "Arquivo HTML gerado com sucesso: " << arquivo_saida << endl;
 }
 
 // Função que carrega a árvore de diretórios REAL
