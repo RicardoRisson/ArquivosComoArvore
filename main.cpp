@@ -172,6 +172,10 @@ public:
 
         return html;
     }
+    // função recursiva que encontra o(s) arquivo(s) de maior tamanho na árvore de arquivos
+    // max_tam: referência para o maior tamanho encontrado até o momento
+    // caminhos: referência para um vetor que acumula os caminhos dos arquivos de maior tamanho
+    // a função atualiza max_tam e caminhos conforme percorre a árvore
     void encontraMaiorArquivo(long &max_tam, vector<string> &caminhos) const
     {
         if (tipo == "arquivo")
@@ -192,12 +196,17 @@ public:
             filho.encontraMaiorArquivo(max_tam, caminhos);
         }
     }
-
+    // função recursiva que busca todos os arquivos com uma extensão específica dentro da árvore.
+    // ext: extensão procurada (ex: ".txt", ".cpp").
+    // arquivos: vetor que armazena os caminhos completos dos arquivos encontrados
+    // visitados: conjunto de caminhos já visitados (para evitar loops com links simbólicos ou duplicações)
+    // utiliza std::filesystem para extrair a extensão de forma robusta
+    //       Evita a repetição de diretórios já visitados usando uma hash set.
+    //       Busca em profundidade (DFS) por toda a árvore.
     void buscaPorExtensao(const string &ext, vector<string> &arquivos, std::unordered_set<string> &visitados) const
     {
         if (visitados.count(caminho_completo)) return; // Prevenir loops infinitos, ele verifica se o caminho já foi visitado
         visitados.insert(caminho_completo);
-        // if (tipo == "arquivo" && nome.size() >= ext.size() && nome.substr(nome.size() - ext.size()) == ext) { // verifica se o nó é um arquivo e se o nome termina com a extensão desejada PROBLEMA: ->
         // não funciona para arquivos com ponto no nome, pois busca pela extensão literalmente
         if (tipo == "arquivo" && fs::path(nome).extension() == ext)
         {
@@ -210,6 +219,9 @@ public:
         }
     }
 
+    // função recursiva que encontra todas as pastas vazias na árvore de arquivos
+    // vazias: vetor que armazena os caminhos completos das pastas sem nenhum filho
+    // uma pasta é considerada vazia se não possui nem arquivos nem subpastas diretamente dentro dela
     void encontraPastasVazias(vector<string> &vazias) const
     {
         if (tipo == "pasta")
@@ -414,9 +426,9 @@ int main(int argc, char *argv[])
 
             if (sub_opcao == 1)
             {
-                long max_tam = -1;
-                vector<string> caminhos;
-                raiz.encontraMaiorArquivo(max_tam, caminhos);
+                long max_tam = -1;                            // inicializa max_tam com -1 para representar um tamanho inicial inválido
+                vector<string> caminhos;                      // vetor caminhos para armazenar o caminho do maior arquivo
+                raiz.encontraMaiorArquivo(max_tam, caminhos); // chama a função recursiva a partir da raiz da árvore
                 if (caminhos.empty())
                 {
                     cout << "\nSem arquivos para esta seleção\n";
@@ -424,26 +436,26 @@ int main(int argc, char *argv[])
                 else
                 {
                     cout << "\nMaior(es) arquivo(s):\n";
-                    for (const auto &c : caminhos)
+                    for (const auto &c : caminhos)             // caso haja resultados, imprime o caminho de cada arquivo encontrado junto com seu tamanho
                     {
                         cout << c << " (" << max_tam << " bytes)\n";
                     }
                 }
             }
-            else if (sub_opcao == 2)
+            else if (sub_opcao == 2)    
             {
-                std::unordered_set<std::string> visitados;
+                std::unordered_set<std::string> visitados;       // unordered_set para registrar os caminhos já visitados para evitar loops infinitos
                 string ext;
-                cout << "Extensao: ";
+                cout << "Extensao: ";                            // solicita ao usuário a extensão a ser buscada
                 cin >> ext;
-                vector<string> arquivos;
-                raiz.buscaPorExtensao(ext, arquivos, visitados);
+                vector<string> arquivos;                         // chama a função recursiva para buscar arquivos com a extensão especificada, armazenando os caminhos no vetor arquivos
+                raiz.buscaPorExtensao(ext, arquivos, visitados); 
                 
                 if (arquivos.empty())
                 {
-                    cout << "\nSem arquivos para esta seleção\n";
+                    cout << "\nSem arquivos para esta seleção\n"; // exibe uma mensagem caso nenhum arquivo tenha sido encontrado
                 }
-                else
+                else                                              // se houver arquivos, imprime seus caminhos completos no console
                 {
                     cout << "\nArquivos com extensao " << ext << ":\n";
                     for (const auto &arq : arquivos)
@@ -454,9 +466,9 @@ int main(int argc, char *argv[])
             }
             else if (sub_opcao == 3)
             {
-                vector<string> vazias;
-                raiz.encontraPastasVazias(vazias);
-                cout << "\nPastas vazias:\n";
+                vector<string> vazias;                // vetor "vazias" para armazenar os caminhos das pastas que não possuem nenhum filho (nem arquivos, nem subpastas).
+                raiz.encontraPastasVazias(vazias);    // chama a função de forma recursiva 
+                cout << "\nPastas vazias:\n";         // imprime a lista de pastas vazias encontradas
                 for (const auto &pasta : vazias)
                 {
                     cout << pasta << "\n";
@@ -464,35 +476,35 @@ int main(int argc, char *argv[])
             }
             else if (sub_opcao == 4)
             {
-                long n;
-                cout << "Digite o valor N (em bytes): ";
+                long n;                                                 // solicita ao usuário o valor N em bytes para comparar com os tamanhos dos arquivos
+                cout << "Digite o valor N (em bytes): ";                
                 cin >> n;
-                vector<pair<string, long>> arquivos;
+                vector<pair<string, long>> arquivos;                    //  executa a busca recursiva, armazenando os arquivos maiores que N como pares <caminho, tamanho>.
                 raiz.buscaArquivosMaiores(n, arquivos);
-                cout << "\nArquivos maiores que " << n << " bytes:\n";
+                cout << "\nArquivos maiores que " << n << " bytes:\n"; 
                 for (const auto &[caminho, tam] : arquivos)
                 {
-                    cout << caminho << " (" << tam << " bytes)\n";
+                    cout << caminho << " (" << tam << " bytes)\n";      // lista os arquivos encontrados e seus respectivos tamanhos
                 }
             }
             else if (sub_opcao == 5)
             {
-                int max_arquivos = -1;
+                int max_arquivos = -1;                                                  // inicia a variável max_arquivos com -1 e caminho_pasta vazio
                 string caminho_pasta;
-                raiz.encontraPastaComMaisArquivos(max_arquivos, caminho_pasta);
-                if (max_arquivos >= 0)
+                raiz.encontraPastaComMaisArquivos(max_arquivos, caminho_pasta);         // chama função recursiva que atualiza "max_arquivos" com a maior quantidade de arquivos diretos e armazena o caminho da pasta correspondente
+                if (max_arquivos >= 0)                                                  // se encontrou alguma pasta com arquivos diretos, exibe a pasta e o número de arquivos
                 {
                     cout << "\nPasta com mais arquivos diretos:\n";
                     cout << caminho_pasta << " (" << max_arquivos << " arquivo(s))\n";
                 }
                 else
                 {
-                    cout << "\nNenhuma pasta encontrada.\n";
+                    cout << "\nNenhuma pasta encontrada.\n";                             // se não encontrou nenhuma pasta com arquivos, exibe mensagem alternativa.
                 }
             }
             else
             {
-                cout << "Opcao invalida.\n";
+                cout << "Opcao invalida.\n";     // mensagem caso a sub_opcao seja invalida
             }
             break;
         }
@@ -501,10 +513,10 @@ int main(int argc, char *argv[])
             cout << "\nSaindo...\n";
             break;
 
-        default:
-            cout << "\nOpcao invalida!\n";
+        default:                                 // default captura qualquer entrada inválida do menu principal
+            cout << "\nOpcao invalida!\n";   
         }
-    } while (opcao_usuario != 4);
+    } while (opcao_usuario != 4);                // o programa continua executando enquanto o usuário não escolher sair
 
     return 0;
 }
